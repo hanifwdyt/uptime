@@ -7,7 +7,8 @@
     "build": "tsc && npx prisma generate",
     "start": "node dist/index.js",
     "db:push": "npx prisma db push",
-    "db:studio": "npx prisma studio"
+    "db:studio": "npx prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
