@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Website {
+  id            String     @id @default(cuid())
+  url           String
+  name          String
+  checkInterval Int        @default(60)
+  isActive      Boolean    @default(true)
+  notifyType    String     @default("personal") // "personal" | "group"
+  notifyTarget  String     @default("")
+  downTemplate  String?    // custom DOWN notification template
+  upTemplate    String?    // custom UP notification template
+  lastStatus    String?    // "up" | "down" | null (never checked)
+  lastCheckedAt DateTime?
+  lastResponseMs Int?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  checks    Check[]
+  incidents Incident[]
+}
+
+model Check {
+  id           String   @id @default(cuid())
+  websiteId    String
+  status       String   // "up" | "down"
+  statusCode   Int?
+  responseTime Int      // ms
+  errorMessage String?
+  checkedAt    DateTime @default(now())
+
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@index([websiteId, checkedAt])
+}
+
+model Incident {
+  id           String    @id @default(cuid())
+  websiteId    String
+  startedAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  duration     Int?      // seconds
+  downNotified Boolean   @default(false)
+  upNotified   Boolean   @default(false)
+
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@index([websiteId, startedAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

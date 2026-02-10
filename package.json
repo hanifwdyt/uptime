@@ -1,0 +1,26 @@
+{
+  "name": "uptime",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc && npx prisma generate",
+    "start": "node dist/index.js",
+    "db:push": "npx prisma db push",
+    "db:studio": "npx prisma studio"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@prisma/client": "^6.3.1",
+    "@whiskeysockets/baileys": "^6.7.16",
+    "hono": "^4.7.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.12.0",
+    "@types/qrcode": "^1.5.5",
+    "prisma": "^6.3.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
