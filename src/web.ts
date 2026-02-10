@@ -199,6 +199,27 @@ app.get("/api/wa/groups", async (c) => {
   return c.json(groups);
 });
 
+// Test endpoint — toggleable up/down for testing monitors
+let testEndpointUp = true;
+
+app.get("/api/test-endpoint", (c) => {
+  if (testEndpointUp) return c.text("OK", 200);
+  return c.text("Service Unavailable", 503);
+});
+
+app.post("/api/test-endpoint/toggle", async (c) => {
+  const auth = requireAuth(c);
+  if (auth) return auth;
+  testEndpointUp = !testEndpointUp;
+  return c.json({ status: testEndpointUp ? "up" : "down" });
+});
+
+app.get("/api/test-endpoint/status", async (c) => {
+  const auth = requireAuth(c);
+  if (auth) return auth;
+  return c.json({ status: testEndpointUp ? "up" : "down" });
+});
+
 // Settings API
 app.get("/api/settings", async (c) => {
   const auth = requireAuth(c);
