@@ -1,12 +1,9 @@
 services:
   uptime:
     build: .
-    container_name: uptime
     restart: unless-stopped
     ports:
       - "3069:3069"
-    volumes:
-      - ./data:/app/data
     environment:
       - DATABASE_URL=file:/app/data/uptime.db
       - ADMIN_PASSWORD=changeme
