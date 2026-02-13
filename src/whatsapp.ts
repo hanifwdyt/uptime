@@ -8,6 +8,7 @@ import { Boom } from "@hapi/boom";
 import * as QRCode from "qrcode";
 import * as path from "path";
 import * as fs from "fs";
+import { handleCommand } from "./commands";
 
 type WAState = "disconnected" | "qr_ready" | "connecting" | "connected";
 
@@ -94,6 +95,50 @@ async function connectWA(): Promise<void> {
       currentQR = null;
       connectedNumber = sock?.user?.id?.split(":")[0] || null;
       console.log(`[WA] Connected as ${connectedNumber}`);
+    }
+  });
+
+  // Bot command listener
+  sock.ev.on("messages.upsert", async ({ messages: msgs, type }) => {
+    if (type !== "notify") return;
+
+    for (const msg of msgs) {
+      if (!msg.message || msg.key.fromMe) continue;
+
+      const text =
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        "";
+      if (!text.startsWith("/")) continue;
+
+      const remoteJid = msg.key.remoteJid;
+      if (!remoteJid) continue;
+
+      // Determine scope based on sender context
+      let scope: { notifyType: string; notifyTarget: string };
+
+      if (remoteJid.endsWith("@g.us")) {
+        // Group message — scope by group JID
+        scope = { notifyType: "group", notifyTarget: remoteJid };
+      } else {
+        // Personal message — scope by phone number
+        const phone = remoteJid.replace("@s.whatsapp.net", "");
+        scope = { notifyType: "personal", notifyTarget: phone };
+      }
+
+      try {
+        const reply = await handleCommand(text, scope);
+        if (reply && sock) {
+          await sock.sendMessage(remoteJid, { text: reply });
+        }
+      } catch (err) {
+        console.error("[WA] Command error:", err);
+        if (sock) {
+          await sock.sendMessage(remoteJid, {
+            text: "Error processing command. Try again later.",
+          });
+        }
+      }
     }
   });
 }

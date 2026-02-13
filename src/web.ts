@@ -307,6 +307,43 @@ const CSS = `
   .collapsible-body.open { display: block; }
   .var-ref { font-size: 12px; color: #666; background: #111; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
   .var-ref code { color: #8b5cf6; }
+
+  /* Hamburger menu */
+  .nav-toggle { display: none; background: none; border: 1px solid #333; color: #e0e0e0; font-size: 20px; padding: 4px 10px; border-radius: 6px; cursor: pointer; line-height: 1; }
+  .nav-toggle:hover { border-color: #555; }
+  .nav-links { display: flex; gap: 20px; align-items: center; }
+
+  /* Responsive table card layout */
+  @media (max-width: 768px) {
+    .nav-toggle { display: block; }
+    .nav { flex-wrap: wrap; }
+    .nav-links { display: none; flex-direction: column; width: 100%; gap: 8px; padding-top: 12px; }
+    .nav-links.open { display: flex; }
+    .container { padding: 12px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .flex-between { flex-direction: column; gap: 12px; align-items: stretch; }
+    .flex-between input[type="text"] { max-width: 100% !important; }
+    .form-row { grid-template-columns: 1fr; }
+    .modal { margin: 16px; max-width: calc(100% - 32px); }
+
+    /* Touch-friendly sizing */
+    input, select, textarea { font-size: 16px; padding: 12px 14px; }
+    .btn { padding: 12px 20px; font-size: 15px; }
+    .btn-sm { padding: 8px 14px; font-size: 13px; }
+
+    /* Table → card layout */
+    .responsive-table table thead { display: none; }
+    .responsive-table table, .responsive-table table tbody, .responsive-table table tr, .responsive-table table td { display: block; width: 100%; }
+    .responsive-table table tr { padding: 12px; margin-bottom: 8px; border: 1px solid #2a2a2a; border-radius: 8px; background: #1a1a1a; }
+    .responsive-table table td { padding: 4px 0; border: none; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .responsive-table table td::before { content: attr(data-label); font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; margin-right: 12px; flex-shrink: 0; }
+    .responsive-table table td:last-child { padding-top: 8px; margin-top: 4px; border-top: 1px solid #222; }
+    .responsive-table table tr:hover { background: #1a1a1a; }
+  }
+
+  @media (max-width: 400px) {
+    .stats-grid { grid-template-columns: 1fr; }
+  }
 `;
 
 function layout(title: string, body: string, nav = true): string {
@@ -324,10 +361,13 @@ function layout(title: string, body: string, nav = true): string {
       ? `<div class="container">
     <div class="nav">
       <span class="nav-brand">Uptime Monitor</span>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/settings">Settings</a>
-      <a href="/wa">WhatsApp</a>
-      <a href="/" onclick="document.cookie='token=;path=/;max-age=0';return true;">Logout</a>
+      <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open');this.textContent=this.textContent==='☰'?'✕':'☰';" aria-label="Toggle menu">☰</button>
+      <div class="nav-links">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/settings">Settings</a>
+        <a href="/wa">WhatsApp</a>
+        <a href="/" onclick="document.cookie='token=;path=/;max-age=0';return true;">Logout</a>
+      </div>
     </div>
   </div>`
       : ""
@@ -381,7 +421,7 @@ app.get("/dashboard", async (c) => {
         <button class="btn" onclick="openModal()">+ Add Website</button>
       </div>
 
-      <div class="card" style="padding:0;overflow:hidden;">
+      <div class="card responsive-table" style="padding:0;overflow:hidden;">
         <table>
           <thead>
             <tr><th>Name</th><th>URL</th><th>Status</th><th>Response</th><th>Uptime</th><th>Notify</th><th>Actions</th></tr>
@@ -503,13 +543,13 @@ app.get("/dashboard", async (c) => {
         tbody.innerHTML = filtered.map(w => {
           const dotClass = w.lastStatus === 'up' ? 'dot-up' : w.lastStatus === 'down' ? 'dot-down' : 'dot-unknown';
           return '<tr>' +
-            '<td><a href="/website/' + w.id + '"><strong>' + esc(w.name) + '</strong></a></td>' +
-            '<td class="text-muted" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(w.url) + '</td>' +
-            '<td><span class="dot ' + dotClass + '"></span> ' + (w.lastStatus || 'pending') + '</td>' +
-            '<td>' + (w.lastResponseMs != null ? w.lastResponseMs + 'ms' : '-') + '</td>' +
-            '<td>' + w.uptimePercent + '</td>' +
-            '<td><span class="text-muted" style="font-size:12px;">' + w.notifyType + '</span></td>' +
-            '<td class="flex gap-2">' +
+            '<td data-label="Name"><a href="/website/' + w.id + '"><strong>' + esc(w.name) + '</strong></a></td>' +
+            '<td data-label="URL" class="text-muted" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(w.url) + '</td>' +
+            '<td data-label="Status"><span class="dot ' + dotClass + '"></span> ' + (w.lastStatus || 'pending') + '</td>' +
+            '<td data-label="Response">' + (w.lastResponseMs != null ? w.lastResponseMs + 'ms' : '-') + '</td>' +
+            '<td data-label="Uptime">' + w.uptimePercent + '</td>' +
+            '<td data-label="Notify"><span class="text-muted" style="font-size:12px;">' + w.notifyType + '</span></td>' +
+            '<td data-label="Actions" class="flex gap-2">' +
               '<button class="btn btn-sm btn-ghost" onclick="editWebsite(\\'' + w.id + '\\')">Edit</button>' +
               '<button class="btn btn-sm btn-danger" onclick="deleteWebsite(\\'' + w.id + '\\')">Del</button>' +
             '</td>' +
@@ -673,7 +713,7 @@ app.get("/website/:id", async (c) => {
         <canvas id="chart" height="80"></canvas>
       </div>
 
-      <div class="card" style="padding:0;overflow:hidden;">
+      <div class="card responsive-table" style="padding:0;overflow:hidden;">
         <h3 style="padding:16px 16px 0;">Incidents</h3>
         <table>
           <thead><tr><th>Started</th><th>Resolved</th><th>Duration</th><th>Notified</th></tr></thead>
@@ -681,7 +721,7 @@ app.get("/website/:id", async (c) => {
         </table>
       </div>
 
-      <div class="card mt-4" style="padding:0;overflow:hidden;">
+      <div class="card responsive-table mt-4" style="padding:0;overflow:hidden;">
         <h3 style="padding:16px 16px 0;">Recent Checks</h3>
         <table>
           <thead><tr><th>Time</th><th>Status</th><th>Code</th><th>Response</th><th>Error</th></tr></thead>
@@ -734,21 +774,21 @@ app.get("/website/:id", async (c) => {
         // Incidents
         document.getElementById('incidents-table').innerHTML = data.incidents.map(i => {
           return '<tr>' +
-            '<td>' + new Date(i.startedAt).toLocaleString() + '</td>' +
-            '<td>' + (i.resolvedAt ? new Date(i.resolvedAt).toLocaleString() : '<span class="text-red">Ongoing</span>') + '</td>' +
-            '<td>' + (i.duration != null ? formatDur(i.duration) : '-') + '</td>' +
-            '<td>' + (i.downNotified ? '✓' : '') + (i.upNotified ? ' ✓' : '') + '</td>' +
+            '<td data-label="Started">' + new Date(i.startedAt).toLocaleString() + '</td>' +
+            '<td data-label="Resolved">' + (i.resolvedAt ? new Date(i.resolvedAt).toLocaleString() : '<span class="text-red">Ongoing</span>') + '</td>' +
+            '<td data-label="Duration">' + (i.duration != null ? formatDur(i.duration) : '-') + '</td>' +
+            '<td data-label="Notified">' + (i.downNotified ? '✓' : '') + (i.upNotified ? ' ✓' : '') + '</td>' +
           '</tr>';
         }).join('');
 
         // Checks
         document.getElementById('checks-table').innerHTML = data.recentChecks.slice(0, 50).map(c => {
           return '<tr>' +
-            '<td>' + new Date(c.checkedAt).toLocaleString() + '</td>' +
-            '<td><span class="badge ' + (c.status === 'up' ? 'badge-up' : 'badge-down') + '">' + c.status + '</span></td>' +
-            '<td>' + (c.statusCode || '-') + '</td>' +
-            '<td>' + c.responseTime + 'ms</td>' +
-            '<td class="text-muted">' + (c.errorMessage || '') + '</td>' +
+            '<td data-label="Time">' + new Date(c.checkedAt).toLocaleString() + '</td>' +
+            '<td data-label="Status"><span class="badge ' + (c.status === 'up' ? 'badge-up' : 'badge-down') + '">' + c.status + '</span></td>' +
+            '<td data-label="Code">' + (c.statusCode || '-') + '</td>' +
+            '<td data-label="Response">' + c.responseTime + 'ms</td>' +
+            '<td data-label="Error" class="text-muted">' + (c.errorMessage || '') + '</td>' +
           '</tr>';
         }).join('');
       }
@@ -859,7 +899,7 @@ app.get("/wa", async (c) => {
         </div>
       </div>
 
-      <div class="card mt-4" id="groups-panel" style="display:none;">
+      <div class="card responsive-table mt-4" id="groups-panel" style="display:none;">
         <h3 class="mb-2">Joined Groups</h3>
         <p class="text-muted mb-4" style="font-size:13px;">Copy the Group JID to use as notify target for group notifications</p>
         <table>
@@ -915,7 +955,7 @@ app.get("/wa", async (c) => {
           if (groups.length > 0) {
             groupsPanel.style.display = 'block';
             document.getElementById('groups-table').innerHTML = groups.map(g => {
-              return '<tr><td>' + esc(g.subject) + '</td><td><code style="background:#111;padding:4px 8px;border-radius:4px;font-size:12px;">' + esc(g.id) + '</code></td></tr>';
+              return '<tr><td data-label="Group Name">' + esc(g.subject) + '</td><td data-label="JID"><code style="background:#111;padding:4px 8px;border-radius:4px;font-size:12px;">' + esc(g.id) + '</code></td></tr>';
             }).join('');
           }
         }
