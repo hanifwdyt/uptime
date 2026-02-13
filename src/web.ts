@@ -308,41 +308,93 @@ const CSS = `
   .var-ref { font-size: 12px; color: #666; background: #111; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
   .var-ref code { color: #8b5cf6; }
 
-  /* Hamburger menu */
-  .nav-toggle { display: none; background: none; border: 1px solid #333; color: #e0e0e0; font-size: 20px; padding: 4px 10px; border-radius: 6px; cursor: pointer; line-height: 1; }
-  .nav-toggle:hover { border-color: #555; }
+  /* Nav layout */
+  .nav-toggle { display: none; background: none; border: 1px solid #333; color: #e0e0e0; font-size: 20px; padding: 6px 12px; border-radius: 8px; cursor: pointer; line-height: 1; }
+  .nav-toggle:hover { border-color: #8b5cf6; color: #fff; }
   .nav-links { display: flex; gap: 20px; align-items: center; }
+  .nav { justify-content: flex-start; }
+  .nav-brand { margin-right: auto; }
 
-  /* Responsive table card layout */
+  /* ===== TABLET (max 768px) ===== */
   @media (max-width: 768px) {
+    /* Nav → hamburger */
+    .nav { flex-wrap: wrap; gap: 12px; }
+    .nav-brand { margin-right: 0; flex: 1; }
     .nav-toggle { display: block; }
-    .nav { flex-wrap: wrap; }
-    .nav-links { display: none; flex-direction: column; width: 100%; gap: 8px; padding-top: 12px; }
+    .nav-links { display: none; width: 100%; flex-direction: column; gap: 0; background: #151515; border-radius: 8px; overflow: hidden; }
     .nav-links.open { display: flex; }
-    .container { padding: 12px; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .flex-between { flex-direction: column; gap: 12px; align-items: stretch; }
-    .flex-between input[type="text"] { max-width: 100% !important; }
-    .form-row { grid-template-columns: 1fr; }
-    .modal { margin: 16px; max-width: calc(100% - 32px); }
+    .nav-links a { display: block; padding: 12px 16px; color: #aaa; border-bottom: 1px solid #222; font-size: 15px; }
+    .nav-links a:hover { background: #1a1a1a; color: #e0e0e0; text-decoration: none; }
+    .nav-links a:last-child { border-bottom: none; }
 
-    /* Touch-friendly sizing */
+    /* Layout */
+    .container { padding: 12px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-card { padding: 14px; }
+    .stat-value { font-size: 22px; }
+
+    /* Search + Add button row */
+    .flex-between { flex-direction: column; gap: 10px; align-items: stretch; }
+    .flex-between input[type="text"] { max-width: 100% !important; }
+
+    /* Forms */
+    .form-row { grid-template-columns: 1fr; }
     input, select, textarea { font-size: 16px; padding: 12px 14px; }
     .btn { padding: 12px 20px; font-size: 15px; }
     .btn-sm { padding: 8px 14px; font-size: 13px; }
 
-    /* Table → card layout */
+    /* Modal */
+    .modal-overlay { align-items: flex-end; }
+    .modal { margin: 0; max-width: 100%; border-radius: 16px 16px 0 0; padding: 24px 16px; max-height: 85vh; }
+
+    /* ---- Table → Card layout ---- */
+    .responsive-table { padding: 0 !important; border: none !important; background: transparent !important; }
+    .responsive-table table { border-collapse: separate; border-spacing: 0; }
     .responsive-table table thead { display: none; }
-    .responsive-table table, .responsive-table table tbody, .responsive-table table tr, .responsive-table table td { display: block; width: 100%; }
-    .responsive-table table tr { padding: 12px; margin-bottom: 8px; border: 1px solid #2a2a2a; border-radius: 8px; background: #1a1a1a; }
-    .responsive-table table td { padding: 4px 0; border: none; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
-    .responsive-table table td::before { content: attr(data-label); font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; margin-right: 12px; flex-shrink: 0; }
-    .responsive-table table td:last-child { padding-top: 8px; margin-top: 4px; border-top: 1px solid #222; }
-    .responsive-table table tr:hover { background: #1a1a1a; }
+    .responsive-table table,
+    .responsive-table table tbody,
+    .responsive-table table tr,
+    .responsive-table table td { display: block; width: 100%; }
+    .responsive-table table tbody { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+    .responsive-table table tr { padding: 14px; border: 1px solid #2a2a2a; border-radius: 10px; background: #1a1a1a; }
+    .responsive-table table tr:hover { background: #1e1e1e; }
+    .responsive-table table td { padding: 5px 0; border: none; font-size: 14px; }
+    /* Label-value rows */
+    .responsive-table table td[data-label] { display: grid; grid-template-columns: 100px 1fr; gap: 8px; align-items: baseline; }
+    .responsive-table table td[data-label]::before { content: attr(data-label); font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    /* Name cell = full width, no label, prominent */
+    .responsive-table table td[data-label="Name"] { display: block; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid #222; }
+    .responsive-table table td[data-label="Name"]::before { display: none; }
+    .responsive-table table td[data-label="Name"] a { font-size: 15px; }
+    /* URL cell — truncate */
+    .responsive-table table td[data-label="URL"] { overflow: hidden; }
+    .responsive-table table td[data-label="URL"] > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Actions cell */
+    .responsive-table table td[data-label="Actions"] { display: flex; gap: 8px; padding-top: 10px; margin-top: 6px; border-top: 1px solid #222; }
+    .responsive-table table td[data-label="Actions"]::before { display: none; }
+    .responsive-table table td[data-label="Actions"] .btn { flex: 1; text-align: center; }
+    /* Group Name cell */
+    .responsive-table table td[data-label="Group Name"] { display: block; padding-bottom: 6px; font-weight: 500; }
+    .responsive-table table td[data-label="Group Name"]::before { display: none; }
+    /* JID cell */
+    .responsive-table table td[data-label="JID"] code { font-size: 11px; word-break: break-all; }
+
+    /* Login */
+    .login-card { margin: 16px; }
+
+    /* Detail page */
+    .card p { font-size: 14px; line-height: 1.8; }
+    .qr-container { padding: 24px; }
+    .qr-container img { max-width: 260px; }
   }
 
+  /* ===== SMALL PHONE (max 400px) ===== */
   @media (max-width: 400px) {
     .stats-grid { grid-template-columns: 1fr; }
+    .stat-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; }
+    .stat-value { font-size: 20px; }
+    .stat-label { margin-top: 0; }
+    .responsive-table table td[data-label] { grid-template-columns: 80px 1fr; }
   }
 `;
 

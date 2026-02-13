@@ -8,6 +8,12 @@ interface ScopeFilter {
   notifyTarget: string;
 }
 
+// Exposed for debug
+export let _debugLidMapSize = () => 0;
+export function setLidMapRef(fn: () => number) {
+  _debugLidMapSize = fn;
+}
+
 export async function handleCommand(
   text: string,
   scope: ScopeFilter
@@ -213,6 +219,7 @@ async function whoamiCmd(scope: ScopeFilter): Promise<string> {
     `Your type: ${scope.notifyType}`,
     `Your target: "${scope.notifyTarget}"`,
     `Matched sites: ${sites.length}`,
+    `LID map entries: ${_debugLidMapSize()}`,
     "",
     "*All sites in DB:*",
     ...allSites.map(
