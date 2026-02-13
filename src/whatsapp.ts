@@ -122,9 +122,12 @@ async function connectWA(): Promise<void> {
         scope = { notifyType: "group", notifyTarget: remoteJid };
       } else {
         // Personal message — scope by phone number
-        const phone = remoteJid.replace("@s.whatsapp.net", "");
+        // Strip device suffix (:XX) and @s.whatsapp.net
+        const phone = remoteJid.split("@")[0].split(":")[0];
         scope = { notifyType: "personal", notifyTarget: phone };
       }
+
+      console.log(`[WA] Command: "${text}" from ${scope.notifyType}:${scope.notifyTarget}`);
 
       try {
         const reply = await handleCommand(text, scope);
