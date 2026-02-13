@@ -8,15 +8,10 @@ interface ScopeFilter {
   notifyTarget: string;
 }
 
-// Exposed for debug
-export let _debugLidMapSize = () => 0;
-export function setLidMapRef(fn: () => number) {
-  _debugLidMapSize = fn;
-}
-
 export async function handleCommand(
   text: string,
-  scope: ScopeFilter
+  scope: ScopeFilter,
+  rawSenderId: string = ""
 ): Promise<string> {
   const trimmed = text.trim();
   if (!trimmed.startsWith("/")) return "";
@@ -27,6 +22,8 @@ export async function handleCommand(
   switch (cmd.toLowerCase()) {
     case "/help":
       return helpText();
+    case "/register":
+      return registerCmd(rawSenderId, arg);
     case "/status":
       return statusCmd(scope);
     case "/list":
@@ -38,7 +35,7 @@ export async function handleCommand(
     case "/check":
       return checkCmd(scope, arg);
     case "/whoami":
-      return whoamiCmd(scope);
+      return whoamiCmd(scope, rawSenderId);
     default:
       return `Unknown command: ${cmd}\nType /help for available commands.`;
   }
@@ -49,6 +46,7 @@ function helpText(): string {
     "*Uptime Monitor Bot*",
     "",
     "/help — Show this help",
+    "/register <phone> — Link your chat (one-time setup)",
     "/status — Summary of your monitored sites",
     "/list — List all your websites with status",
     "/on <domain> — Resume monitoring",
@@ -57,11 +55,43 @@ function helpText(): string {
   ].join("\n");
 }
 
+async function registerCmd(
+  rawSenderId: string,
+  phone: string
+): Promise<string> {
+  if (!rawSenderId) {
+    return "Registration is only available in personal chats.";
+  }
+
+  // Clean phone input — digits only
+  const cleaned = phone.replace(/\D/g, "");
+  if (!cleaned || cleaned.length < 8) {
+    return "Usage: /register <phone>\nExample: /register 6287872753959";
+  }
+
+  // Verify this phone exists as a notifyTarget in the DB
+  const exists = await prisma.website.findFirst({
+    where: { notifyType: "personal", notifyTarget: cleaned },
+  });
+  if (!exists) {
+    return `No websites found with notifyTarget "${cleaned}".\nMake sure the number matches what's configured in the dashboard.`;
+  }
+
+  // Save mapping: lid:<rawId> → phone
+  await prisma.setting.upsert({
+    where: { key: `lid:${rawSenderId}` },
+    update: { value: cleaned },
+    create: { key: `lid:${rawSenderId}`, value: cleaned },
+  });
+
+  return `Linked! Your chat is now mapped to ${cleaned}.\nTry /list to see your websites.`;
+}
+
 async function statusCmd(scope: ScopeFilter): Promise<string> {
   const sites = await prisma.website.findMany({ where: scope });
 
   if (sites.length === 0) {
-    return "No websites assigned to this chat.";
+    return noSitesMessage(scope);
   }
 
   const up = sites.filter((s) => s.lastStatus === "up").length;
@@ -84,7 +114,7 @@ async function listCmd(scope: ScopeFilter): Promise<string> {
   });
 
   if (sites.length === 0) {
-    return "No websites assigned to this chat.";
+    return noSitesMessage(scope);
   }
 
   const lines = sites.map((s) => {
@@ -208,22 +238,34 @@ async function checkCmd(scope: ScopeFilter, domain: string): Promise<string> {
   return lines.join("\n");
 }
 
-async function whoamiCmd(scope: ScopeFilter): Promise<string> {
+async function whoamiCmd(
+  scope: ScopeFilter,
+  rawSenderId: string
+): Promise<string> {
   const sites = await prisma.website.findMany({ where: scope });
-  const allSites = await prisma.website.findMany({
-    select: { name: true, notifyType: true, notifyTarget: true },
-  });
+  const mapping = rawSenderId
+    ? await prisma.setting.findUnique({ where: { key: `lid:${rawSenderId}` } })
+    : null;
 
   return [
     "*Debug Info*",
-    `Your type: ${scope.notifyType}`,
-    `Your target: "${scope.notifyTarget}"`,
+    `Raw sender ID: "${rawSenderId}"`,
+    `Resolved to: "${scope.notifyTarget}"`,
+    `DB mapping: ${mapping ? `lid:${rawSenderId} → ${mapping.value}` : "none"}`,
     `Matched sites: ${sites.length}`,
-    `LID map entries: ${_debugLidMapSize()}`,
-    "",
-    "*All sites in DB:*",
-    ...allSites.map(
-      (s) => `• ${s.name} → type="${s.notifyType}" target="${s.notifyTarget}"`
-    ),
   ].join("\n");
+}
+
+function noSitesMessage(scope: ScopeFilter): string {
+  if (scope.notifyType === "personal") {
+    return [
+      "No websites found for this chat.",
+      "",
+      "You may need to link your number first:",
+      "/register <your-phone-number>",
+      "",
+      "Example: /register 6287872753959",
+    ].join("\n");
+  }
+  return "No websites assigned to this group.";
 }

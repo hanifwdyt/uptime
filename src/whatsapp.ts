@@ -5,10 +5,13 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
+import { PrismaClient } from "@prisma/client";
 import * as QRCode from "qrcode";
 import * as path from "path";
 import * as fs from "fs";
-import { handleCommand, setLidMapRef } from "./commands";
+import { handleCommand } from "./commands";
+
+const prisma = new PrismaClient();
 
 type WAState = "disconnected" | "qr_ready" | "connecting" | "connected";
 
@@ -17,9 +20,6 @@ let currentQR: string | null = null;
 let state: WAState = "disconnected";
 let connectedNumber: string | null = null;
 let shouldReconnect = true;
-
-// LID → phone number mapping (Baileys v6 uses LID JIDs instead of phone JIDs)
-const lidToPhone = new Map<string, string>();
 
 const AUTH_DIR = path.resolve("./data/baileys-auth");
 
@@ -101,31 +101,6 @@ async function connectWA(): Promise<void> {
     }
   });
 
-  // Expose LID map size for debug
-  setLidMapRef(() => lidToPhone.size);
-
-  // Build LID → phone mapping from contacts
-  sock.ev.on("contacts.upsert", (contacts) => {
-    for (const c of contacts) {
-      if (c.lid && c.id) {
-        const lidNum = c.lid.split("@")[0].split(":")[0];
-        const phoneNum = c.id.split("@")[0].split(":")[0];
-        lidToPhone.set(lidNum, phoneNum);
-      }
-    }
-    console.log(`[WA] Contact map updated: ${lidToPhone.size} LID→phone entries`);
-  });
-
-  sock.ev.on("contacts.update", (updates) => {
-    for (const c of updates) {
-      if (c.lid && c.id) {
-        const lidNum = c.lid.split("@")[0].split(":")[0];
-        const phoneNum = c.id.split("@")[0].split(":")[0];
-        lidToPhone.set(lidNum, phoneNum);
-      }
-    }
-  });
-
   // Bot command listener
   sock.ev.on("messages.upsert", async ({ messages: msgs, type }) => {
     if (type !== "notify") return;
@@ -144,27 +119,32 @@ async function connectWA(): Promise<void> {
 
       // Determine scope based on sender context
       let scope: { notifyType: string; notifyTarget: string };
+      let rawSenderId = "";
 
       if (remoteJid.endsWith("@g.us")) {
         // Group message — scope by group JID
         scope = { notifyType: "group", notifyTarget: remoteJid };
       } else {
-        // Personal message — scope by phone number
-        // Strip device suffix (:XX) and @lid / @s.whatsapp.net
-        let phone = remoteJid.split("@")[0].split(":")[0];
-        // Resolve LID to actual phone number (Baileys v6 uses LID JIDs)
-        const resolved = lidToPhone.get(phone);
-        if (resolved) {
-          console.log(`[WA] Resolved LID ${phone} → phone ${resolved}`);
-          phone = resolved;
+        // Personal message — extract raw ID from JID
+        rawSenderId = remoteJid.split("@")[0].split(":")[0];
+        let phone = rawSenderId;
+
+        // Baileys v6 sends LID JIDs (not phone numbers)
+        // Check DB for stored LID → phone mapping
+        const mapping = await prisma.setting.findUnique({
+          where: { key: `lid:${rawSenderId}` },
+        });
+        if (mapping) {
+          phone = mapping.value;
         }
+
         scope = { notifyType: "personal", notifyTarget: phone };
       }
 
-      console.log(`[WA] Command: "${text}" from ${scope.notifyType}:${scope.notifyTarget}`);
+      console.log(`[WA] Command: "${text}" from ${scope.notifyType}:${scope.notifyTarget} (raw: ${rawSenderId})`);
 
       try {
-        const reply = await handleCommand(text, scope);
+        const reply = await handleCommand(text, scope, rawSenderId);
         if (reply && sock) {
           await sock.sendMessage(remoteJid, { text: reply });
         }
