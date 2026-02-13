@@ -31,6 +31,8 @@ export async function handleCommand(
       return toggleCmd(scope, arg, false);
     case "/check":
       return checkCmd(scope, arg);
+    case "/whoami":
+      return whoamiCmd(scope);
     default:
       return `Unknown command: ${cmd}\nType /help for available commands.`;
   }
@@ -198,4 +200,23 @@ async function checkCmd(scope: ScopeFilter, domain: string): Promise<string> {
   if (errorMessage) lines.push(`Error: ${errorMessage}`);
 
   return lines.join("\n");
+}
+
+async function whoamiCmd(scope: ScopeFilter): Promise<string> {
+  const sites = await prisma.website.findMany({ where: scope });
+  const allSites = await prisma.website.findMany({
+    select: { name: true, notifyType: true, notifyTarget: true },
+  });
+
+  return [
+    "*Debug Info*",
+    `Your type: ${scope.notifyType}`,
+    `Your target: "${scope.notifyTarget}"`,
+    `Matched sites: ${sites.length}`,
+    "",
+    "*All sites in DB:*",
+    ...allSites.map(
+      (s) => `• ${s.name} → type="${s.notifyType}" target="${s.notifyTarget}"`
+    ),
+  ].join("\n");
 }
